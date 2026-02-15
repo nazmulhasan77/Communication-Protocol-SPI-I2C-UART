@@ -1,5 +1,7 @@
-// uart receiver
-
+/* 
+	UART Receiver
+ 	PA10  -> USART1_RX  (AF7) D2
+*/
 #define RCC_BASE (0x40023800)
 #define GPIOA_BASE (0x40020000)
 #define UART_BASE (0x40011000)
@@ -16,7 +18,7 @@
 #define UART1_DR (*(volatile unsigned int*)(UART_BASE + 0x04))
 
 
-#define SYSCLK 16000000U
+#define SYSCLK 16000000U //HSI 16 MHz
 #define BAUD_RATE 9600U
 void UART1_INIT();
 void UART_READ(int n, char *str);
@@ -34,9 +36,12 @@ int main(){
 
 void UART1_INIT(){
 	//Enable clock
-	RCC_AHB1ENR |= (1<<0);
+	RCC_AHB1ENR |= (1<<0); //RCC_AHB1ENR bit0 = GPIOAEN
 
-	// Alternate mode enable
+	/* Alternate mode enable
+	 Configure PA10 (D2) as Alternate Function
+	MODER10[1:0] = 10 (Alternate Function mode)
+	*/
 	GPIOA_MODER &=~(1<<20);
 	GPIOA_MODER |=(1<<21);
 
@@ -51,7 +56,7 @@ void UART1_INIT(){
 	//SET BAUD RATE
 	UART1_BRR = ((SYSCLK + (BAUD_RATE/2))/BAUD_RATE);
 
-	UART1_CR1 |= (1<<2);//TRANSMITER ENALE
+	UART1_CR1 |= (1<<2);//Receiver ENALE CR1 bit2 = RE , Page - 839
 
 	UART1_CR1 |=(1<<13); //UART_ENABLE
 
@@ -60,9 +65,15 @@ void UART1_INIT(){
 void UART_READ(int n, char* str){
 
 	for(int i=0;i<n;i++){
+		/*
+		   Wait until RXNE = 1
+           SR bit5 (RXNE) → Data available in DR
+		   Page - 835
+		 */
 		while(!(UART1_SR & (1<<5))){}
+
+		//Read received byte from DR
 		str[i] = UART1_DR;
 	}
 
 }
-
